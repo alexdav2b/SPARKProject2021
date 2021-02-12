@@ -1,0 +1,9 @@
+[debug] Packaging D:\esgi\SPARK\Spark\target\scala-2.12\spark_2.12-0.1.jar ...
+[debug] Input file mappings:
+[debug] 	SimpleSparkApp$.class
+[debug] 	  D:\esgi\SPARK\Spark\target\scala-2.12\classes\SimpleSparkApp$.class
+[debug] 	SimpleSparkApp$delayedInit$body.class
+[debug] 	  D:\esgi\SPARK\Spark\target\scala-2.12\classes\SimpleSparkApp$delayedInit$body.class
+[debug] 	SimpleSparkApp.class
+[debug] 	  D:\esgi\SPARK\Spark\target\scala-2.12\classes\SimpleSparkApp.class
+[debug] Done packaging.
