@@ -51,6 +51,19 @@ object ImdbPrediction extends App {
 
   val bestRated = imdbCoeffs.selectExpr("*", "(averageRating*coefficient)/4 as popularite")
     .sort(desc("popularite"))
+  println("----------------bestRated---------------")
+  bestRated.show(100)
+
+  /**Classement des oeuvres les mieux notées en étant les plus populaires
+   */
+
+  val coef_udf = udf(imdbLib.intervalle _)
+  val imdbCoeffs = imdbRatings.withColumn("coefficient",  coef_udf(col("numVotes")))
+  //imdbCoeffs.show()
+
+  val bestRated = imdbCoeffs.selectExpr("*", "(averageRating*coefficient)/4 as popularite")
+    .sort(desc("popularite"))
+  println("----------------bestRated---------------")
   bestRated.show(100)
 
   /** Croisement des données pour obtenir une valeur de prédiction
@@ -67,33 +80,36 @@ object ImdbPrediction extends App {
   val explodedDF2 = explodedDF.select(col("*"), explode(col("primaryProfession")).as("primaryProfessions"))
     .drop("primaryProfession")
 
-  /*  Liste de tous les emplois possibles, ne sert qu'à filtrer plus tard
-    val professions = explodedDF2.select("primaryProfessions")
-      .distinct()
-    //professions.show()
-  */
+/*  Liste de tous les emplois possibles, ne sert qu'à filtrer plus tard
+  val professions = explodedDF2.select("primaryProfessions")
+    .distinct()
+  //professions.show()
+*/
 
   //Jointure entre la liste de personnes et des films, avec leur cote de popularite
   val personWithMovie = explodedDF2.join(bestRated, bestRated("tconst") === explodedDF2("knownForTitle"))
     .drop("tconst")
     .sort("nconst")
-  //personWithMovie.show()
+  println("----------------personWithMovie---------------")
+  personWithMovie.show()
 
   //Jointure entre les personnes principales d'un film et les films principaux d'une personne pour ne garder que les +++ importants, pareil pour le join, please don't blame me
   val importantAndSuccessful = personWithMovie.join(imdbPrincipals,
     personWithMovie("knownForTitle") === imdbPrincipals("tconst")
-      && personWithMovie("nconst") === imdbPrincipals("nconst")
-      && personWithMovie("primaryProfessions") === imdbPrincipals("category"))
+    && personWithMovie("nconst") === imdbPrincipals("nconst")
+    && personWithMovie("primaryProfessions") === imdbPrincipals("category"))
     .drop("job", "tconst", "primaryProfessions")
     .drop(imdbPrincipals("nconst"))
     .sort(desc("popularite"))
-  //importantAndSuccessful.show()
+  println("----------------importantAndSuccessful---------------")
+  importantAndSuccessful.show()
 
   //Calcul de la moyenne de la popularité des oeuvres de chaque personne
   val theSTARS = importantAndSuccessful.groupBy("nconst", "primaryName")
     .agg(avg("popularite").as("moyennePop"))
     .sort(desc("moyennePop"))
-  //theSTARS.show()
+  println("----------------theStars---------------")
+  theSTARS.show()
 
   /** Dataframes de prédiction
    */
@@ -105,27 +121,32 @@ object ImdbPrediction extends App {
     .drop(imdbPersons("nconst"))
     .drop("knownForTitles", "birthYear", "deathYear", "job", "primaryProfession")
     .sort("tconst")
-  //predict1.show()
+  println("----------------predict1---------------")
+  predict1.show()
 
   val predict2 = predict1.join(theSTARS, "nconst")
     .sort("tconst")
-  //predict2.show()
+  println("----------------predict2---------------")
+  predict2.show()
 
   //Calcul de la moyenne des notes des films d'un acteur et de l'importance de son rôle dans un film donné
   val ourPrediction1 = predict2
     .selectExpr("tconst", "nconst", "(moyennePop*(1/ordering)) as ValeurAjoutee_Acteur")
     .sort(desc("ValeurAjoutee_Acteur"))
-  //ourPrediction1.show()
+  println("----------------ValeurAjoutee---------------")
+  ourPrediction1.show()
 
   //Aggrégation des valeurs ajoutées des personnes afin de prédire le "succès" d'un film
   val ourPrediction2 = ourPrediction1.groupBy("tconst")
     .agg(avg("ValeurAjoutee_Acteur").as("prediction"))
     .sort(desc("prediction"))
-  ourPrediction2.show()
+  //println("----------------prediction---------------")
+  //ourPrediction2.show()
 
   //DF avec les noms des films
   val prettyDF = ourPrediction2.join(imdbTitles, "tconst")
     .drop("titleType", "originalTitle","isAdult","startYear","endYear","runtimeMinutes","genres")
     .sort(desc("prediction"))
+  println("----------------final Dataframe---------------")
   prettyDF.show()
 }
